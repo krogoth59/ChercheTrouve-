@@ -22,7 +22,13 @@ Un menu déroulant en haut de l'écran choisit la catégorie ; la liste des nive
   - **Confédération Ælys** (blanc et orange) : vecteurs, lames-éther, gardiens, agresseurs, relais énergétiques, nexus d'ancrage, tours sentinelles, dans un marais nocturne ;
   - **Combine Valnir** (blanc, bleu et noir) : Vanguard, Talon, Auriga, Vexor, Argus, Rampart, Orbita, Lyra, Ravenix, Mantis et Bastion, dans un canyon en flammes.
 
-Les planches de Guerre stellaire sont générées par `outils/gen_stellaire.js`, qui écrit les SVG et injecte la liste des objets dans `index.html` :
+Les unités sont celles des planches de concept (`outils/planches/`), découpées telles quelles en images transparentes dans `outils/unites/` par `outils/decoupe_unites.js` (nécessite le paquet `sharp`) :
+
+```
+node outils/decoupe_unites.js outils/planches outils/unites
+```
+
+Les planches de jeu sont ensuite générées par `outils/gen_stellaire.js`, qui y place ces unités, écrit les SVG et injecte la liste des objets dans `index.html` :
 
 ```
 node outils/gen_stellaire.js .

@@ -1,0 +1,202 @@
+{
+ "valnir_aeris": [
+  232,
+  148
+ ],
+ "valnir_ravenix": [
+  294,
+  160
+ ],
+ "valnir_mantis": [
+  341,
+  227
+ ],
+ "valnir_bastion": [
+  505,
+  234
+ ],
+ "valnir_talon": [
+  340,
+  284
+ ],
+ "valnir_auriga": [
+  409,
+  249
+ ],
+ "valnir_vexor": [
+  327,
+  250
+ ],
+ "valnir_argus": [
+  383,
+  214
+ ],
+ "valnir_vanguard": [
+  165,
+  205
+ ],
+ "valnir_orbita": [
+  253,
+  150
+ ],
+ "valnir_lyra": [
+  222,
+  195
+ ],
+ "valnir_rampart": [
+  576,
+  191
+ ],
+ "aelys_eclaireur": [
+  238,
+  148
+ ],
+ "aelys_nexus": [
+  631,
+  268
+ ],
+ "aelys_collecteur": [
+  334,
+  197
+ ],
+ "aelys_navette": [
+  283,
+  189
+ ],
+ "aelys_sonde": [
+  135,
+  95
+ ],
+ "aelys_relais": [
+  139,
+  99
+ ],
+ "aelys_tour": [
+  275,
+  419
+ ],
+ "aelys_soutien": [
+  251,
+  197
+ ],
+ "aelys_gardien": [
+  242,
+  214
+ ],
+ "aelys_agresseur": [
+  235,
+  185
+ ],
+ "aelys_eliteur": [
+  134,
+  143
+ ],
+ "aelys_falconneur": [
+  185,
+  217
+ ],
+ "aelys_vecteur": [
+  128,
+  151
+ ],
+ "aelys_cycleur": [
+  136,
+  88
+ ],
+ "aelys_minier": [
+  101,
+  92
+ ],
+ "aelys_lame": [
+  184,
+  122
+ ],
+ "aelys_protecteur": [
+  113,
+  129
+ ],
+ "xaroth_ver": [
+  226,
+  257
+ ],
+ "xaroth_matriarche": [
+  246,
+  204
+ ],
+ "xaroth_chasseur": [
+  144,
+  254
+ ],
+ "xaroth_ravageur": [
+  188,
+  205
+ ],
+ "xaroth_predateur": [
+  240,
+  219
+ ],
+ "xaroth_porteessaim": [
+  211,
+  234
+ ],
+ "xaroth_essaimlon": [
+  108,
+  169
+ ],
+ "xaroth_griffeuse": [
+  143,
+  146
+ ],
+ "xaroth_traqueur": [
+  108,
+  169
+ ],
+ "xaroth_tisseuse": [
+  168,
+  215
+ ],
+ "xaroth_mutant": [
+  156,
+  157
+ ],
+ "xaroth_devoreur": [
+  182,
+  178
+ ],
+ "xaroth_embusqueur": [
+  160,
+  190
+ ],
+ "xaroth_colosse": [
+  422,
+  236
+ ],
+ "xaroth_terrier": [
+  272,
+  159
+ ],
+ "xaroth_couveuse": [
+  167,
+  127
+ ],
+ "xaroth_reserve": [
+  190,
+  155
+ ],
+ "xaroth_nid": [
+  272,
+  176
+ ],
+ "xaroth_incubateur": [
+  200,
+  132
+ ],
+ "xaroth_extracteur": [
+  258,
+  169
+ ],
+ "xaroth_rampant": [
+  240,
+  142
+ ]
+}
