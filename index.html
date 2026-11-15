@@ -116,6 +116,7 @@ dialog .row{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-
       <span class="pill" title="Objets trouvés"><b id="count">0</b>/<span id="total">24</span></span>
       <span class="pill" title="Temps" id="timer">00:00</span>
       <span class="pill" title="Erreurs">✗ <b id="errors">0</b></span>
+      <span class="pill" id="cloud" title="Progression gardée sur cet appareil">💾 Ce navigateur</span>
       <button class="btn" id="hintBtn" type="button">Indice (+30 s)</button>
       <button class="btn" id="menuBtn" type="button">Options</button>
       <button class="btn" id="fullBtn" type="button" aria-label="Plein écran : masquer les barres">⛶ Plein écran</button>
@@ -188,12 +189,139 @@ const store = {
   get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
   set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
 };
+// ---------- sauvegarde partagée : une seule progression pour tous les joueurs (Firebase Realtime Database)
+// Mettre ici l'adresse de la base, ex. 'https://mon-projet-default-rtdb.europe-west1.firebasedatabase.app'
+// Laisser vide pour jouer sans partage (progression gardée dans ce navigateur).
+const FIREBASE_URL = '';
+let touched = false;
+const sync = {
+  on: !!FIREBASE_URL,
+  base: FIREBASE_URL.replace(/\/+$/, '') + '/cherchetrouve',
+  tree: null, ready: false, pending: {}, dirty: {}, timer: null, busy: false,
+  status(t, title){ const el = document.getElementById('cloud'); if (el){ el.textContent = t; el.title = title; } },
+  async req(method, path, body){
+    const r = await fetch(this.base + path + '.json', {method, body: JSON.stringify(body)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+  },
+  scalars(s){ return {errors: s.errors||0, time: s.time||0, hints: s.hints||0, revealed: !!s.revealed, bonus: s.bonus ?? null, done: !!s.done, epoch: s.epoch||0}; },
+  toRemote(s){ const f = {}; (s.found||[]).forEach(i => f['i'+i] = true); return {...this.scalars(s), found: f}; },
+  // fusion de la sauvegarde partagée avec l'état local d'une planche
+  merge(id, loc){
+    const r = this.tree && this.tree.levels && this.tree.levels[id];
+    if (!r) return loc;
+    const pend = [...(this.pending[id] || [])];
+    const rf = Object.keys(r.found || {}).map(k => +k.slice(1)).filter(n => Number.isInteger(n));
+    if (loc && this.dirty[id] && (loc.epoch||0) > (r.epoch||0)) return loc; // remise à zéro locale pas encore enregistrée
+    const same = loc && (loc.epoch||0) === (r.epoch||0);
+    const found = [...new Set([...rf, ...(same ? pend : [])])];
+    const keep = same && this.dirty[id]; // modification locale pas encore envoyée : on la garde
+    const m = {
+      found,
+      errors: same ? Math.max(r.errors||0, loc.errors||0) : (r.errors||0),
+      time: same ? Math.max(r.time||0, loc.time||0) : (r.time||0),
+      hints: same ? Math.max(r.hints||0, loc.hints||0) : (r.hints||0),
+      revealed: keep ? !!loc.revealed : !!r.revealed,
+      bonus: keep ? (loc.bonus ?? null) : (r.bonus ?? null),
+      done: !!r.done || (same && !!loc.done),
+      epoch: r.epoch||0
+    };
+    const lv = LEVELS.find(l => l.id === id);
+    if (lv && m.found.length >= lv.items.length) m.done = true;
+    return m;
+  },
+  refresh(){
+    LEVELS.forEach(lv => {
+      const loc = store.get('ct4-'+lv.id), m = this.merge(lv.id, loc);
+      if (m && m !== loc){ try { localStorage.setItem('ct4-'+lv.id, JSON.stringify(m)); } catch(e){} }
+    });
+    if (!L) return;
+    const m = this.merge(L.id, st);
+    if (!m || JSON.stringify(m) === JSON.stringify(st)) return;
+    const newly = m.found.filter(i => !st.found.includes(i));
+    st = m; bonusVal = st.bonus ?? bonusVal;
+    renderList(); renderMarks(); renderStats(); renderBonus();
+    if (focusIdx >= 0 && st.found.includes(focusIdx)) setFocus(nextUnfound(focusIdx, 1)); else setFocus(focusIdx);
+    if (newly.length === 1) toast('Trouvé par un autre joueur : ' + L.items[newly[0]].label);
+    else if (newly.length > 1) toast(newly.length + ' objets trouvés par d\'autres joueurs');
+  },
+  setAt(path, data, patch){
+    const parts = path.split('/').filter(Boolean);
+    if (!parts.length){ this.tree = patch ? Object.assign(this.tree || {}, data) : (data || {}); return; }
+    let o = this.tree || (this.tree = {});
+    for (let k = 0; k < parts.length - 1; k++){ if (typeof o[parts[k]] !== 'object' || !o[parts[k]]) o[parts[k]] = {}; o = o[parts[k]]; }
+    const last = parts[parts.length - 1];
+    if (patch){ o[last] = Object.assign(typeof o[last] === 'object' && o[last] ? o[last] : {}, data); for (const k in data) if (data[k] === null) delete o[last][k]; }
+    else if (data === null) delete o[last]; else o[last] = data;
+  },
+  // ---- envois
+  save(id){ if (!this.on) return; this.dirty[id] = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 1500); },
+  found(id, i){ if (!this.on) return; (this.pending[id] ||= new Set()).add(i); this.save(id); },
+  reset(id, s){ if (!this.on) return; this.pending[id] = new Set(); this.dirty[id] = 'reset'; clearTimeout(this.timer); this.flush(); },
+  async flush(){
+    if (!this.on || !this.ready) return;
+    if (this.busy){ this.save(Object.keys(this.dirty)[0] || L.id); return; }
+    this.busy = true;
+    try {
+      for (const id of Object.keys(this.dirty)){
+        const s = store.get('ct4-'+id) || (L && L.id === id ? st : null);
+        const mode = this.dirty[id];
+        delete this.dirty[id];
+        if (!s) continue;
+        try {
+          if (mode === 'reset') await this.req('PUT', '/levels/'+id, this.toRemote(s));
+          else {
+            const f = {}; [...(this.pending[id] || [])].forEach(i => f['i'+i] = true);
+            if (Object.keys(f).length) await this.req('PATCH', '/levels/'+id+'/found', f);
+            await this.req('PATCH', '/levels/'+id, this.scalars(s));
+            this.pending[id] = new Set();
+          }
+        } catch(e){ this.dirty[id] = this.dirty[id] || mode; throw e; }
+      }
+      this.status('☁ Partagé', 'Progression commune à tous les joueurs, enregistrée en ligne');
+    } catch(e){
+      this.status('⚠ Hors ligne', 'Sauvegarde en ligne injoignable : nouvel essai dans quelques secondes');
+      clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 8000);
+    }
+    this.busy = false;
+  },
+  setLast(i){ if (this.on && this.ready) this.req('PUT', '/last', i).catch(() => {}); },
+  // ---- réception en direct
+  start(){
+    if (!this.on){ this.status('💾 Ce navigateur', 'Progression gardée sur cet appareil'); return; }
+    this.status('☁ …', 'Connexion à la sauvegarde partagée');
+    const es = new EventSource(this.base + '.json');
+    const handle = (ev, patch) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch(e){ return; }
+      if (!msg || typeof msg.path !== 'string') return;
+      this.setAt(msg.path, msg.data, patch);
+      if (!this.ready) this.first(); else this.refresh();
+      this.status('☁ Partagé', 'Progression commune à tous les joueurs, enregistrée en ligne');
+    };
+    es.addEventListener('put', e => handle(e, false));
+    es.addEventListener('patch', e => handle(e, true));
+    es.addEventListener('cancel', () => this.status('⚠ Refusé', 'La base Firebase refuse l\'accès : vérifier ses règles'));
+    es.onerror = () => this.status('⚠ Hors ligne', 'Sauvegarde en ligne injoignable : reconnexion en cours');
+  },
+  first(){
+    this.ready = true;
+    // la première fois, on envoie ce qui existe déjà dans ce navigateur pour les planches encore vierges en ligne
+    const lv = (this.tree && this.tree.levels) || {};
+    LEVELS.forEach(l => {
+      const loc = L && L.id === l.id ? st : store.get('ct4-'+l.id);
+      if (!lv[l.id] && loc && ((loc.found||[]).length || loc.time)) { this.dirty[l.id] = 'reset'; }
+    });
+    const last = this.tree && this.tree.last;
+    if (!touched && Number.isInteger(last) && last >= 0 && last < LEVELS.length && last !== curIdx) load(last);
+    this.refresh();
+    if (Object.keys(this.dirty).length) this.flush();
+  }
+};
 let L = null, st = null, focusIdx = -1;
 let scale = 1, tx = 0, ty = 0, minScale = 0.1;
 const MAXS = 3;
 
 function fmt(s){ s = Math.floor(s); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-function save(){ store.set('ct4-'+L.id, st); }
+function save(){ store.set('ct4-'+L.id, st); sync.save(L.id); }
 
 // ---------- level
 let curIdx = 0;
@@ -205,7 +333,7 @@ function buildTabs(){
     const b = document.createElement('button'); b.className = 'lv'; b.type = 'button';
     b.setAttribute('aria-current', i===curIdx);
     b.innerHTML = `<img alt="" src="img/${lv.id}_thumb.jpg"><b>${lv.n}. ${lv.name}</b><small>${lv.kind === 'theme' ? 'Monde à thème' : 'Monde en coupe'}</small><small>${lv.items.length} à trouver · ${lv.count} objets · ${s.done ? 'terminé ✓' : pct + ' %'}</small><span class="bar"><i style="width:${pct}%"></i></span>`;
-    b.addEventListener('click', () => { $('#levels').close(); load(i); });
+    b.addEventListener('click', () => { touched = true; $('#levels').close(); load(i); sync.setLast(i); });
     g.appendChild(b);
   });
 }
@@ -289,7 +417,7 @@ $('#bok').onclick = () => { st.bonus = bonusVal; save(); renderBonus(); };
 setInterval(() => {
   if (!L || st.done || st.revealed || document.hidden) return;
   st.time += 1; $('#timer').textContent = $('#htimer').textContent = fmt(st.time);
-  if (st.time % 5 === 0) save();
+  if (st.time % 5 === 0){ store.set('ct4-'+L.id, st); if (st.time % 15 === 0) sync.save(L.id); }
 }, 1000);
 
 // ---------- view transform
@@ -386,7 +514,7 @@ function tap(x, y){
   const rp = document.createElement('div'); rp.className = 'ripple' + (best >= 0 ? ' good' : '');
   rp.style.left = x+'px'; rp.style.top = y+'px'; view.appendChild(rp); setTimeout(() => rp.remove(), 650);
   if (best >= 0){
-    st.found.push(best); save();
+    touched = true; st.found.push(best); store.set('ct4-'+L.id, st); sync.found(L.id, best);
     toast('Trouvé : ' + L.items[best].label);
     if (focusIdx === best) setFocus(nextUnfound(best, 1)); else if (focusIdx >= 0) setFocus(focusIdx);
     renderList(); renderMarks(); renderStats();
@@ -394,7 +522,7 @@ function tap(x, y){
   } else {
     // a near miss on an already-found item is not an error
     const onFound = L.items.some((it,i) => st.found.includes(i) && Math.hypot(ix-it.x, iy-it.y) < Math.max(base, (it.r || 13) * 1.05));
-    if (!onFound){ st.errors++; save(); renderStats(); toast('Rien ici…', true); }
+    if (!onFound){ touched = true; st.errors++; save(); renderStats(); toast('Rien ici…', true); }
   }
 }
 let toastT = null;
@@ -409,7 +537,7 @@ function win(){
   $('#win').showModal();
 }
 $('#closeWin').onclick = () => $('#win').close();
-$('#nextLvl').onclick = () => { $('#win').close(); if (curIdx < LEVELS.length-1) load(curIdx+1); };
+$('#nextLvl').onclick = () => { touched = true; $('#win').close(); if (curIdx < LEVELS.length-1){ load(curIdx+1); sync.setLast(curIdx); } };
 
 function nextUnfound(from, dir){
   const n = L.items.length;
@@ -476,8 +604,8 @@ $('#menuBtn').onclick = () => $('#menu').showModal();
 $('#closeMenu').onclick = () => $('#menu').close();
 $('#revealBtn').onclick = () => { st.revealed = true; save(); renderMarks(); $('#menu').close(); };
 $('#resetBtn').onclick = () => {
-  st = {found:[], errors:0, time:0, hints:0, revealed:false, bonus:null, done:false}; bonusVal = 0;
-  save(); renderList(); renderMarks(); renderStats(); renderBonus(); setFocus(nextUnfound(-1, 1)); $('#menu').close();
+  st = {found:[], errors:0, time:0, hints:0, revealed:false, bonus:null, done:false, epoch:Date.now()}; bonusVal = 0;
+  store.set('ct4-'+L.id, st); sync.reset(L.id); renderList(); renderMarks(); renderStats(); renderBonus(); setFocus(nextUnfound(-1, 1)); $('#menu').close();
 };
 $('#toggleSide').onclick = e => {
   const s = $('#side'); s.classList.toggle('collapsed');
@@ -488,6 +616,8 @@ $('#toggleSide').onclick = e => {
 
 buildTabs();
 load(Math.min(LEVELS.length-1, store.get('ct4-last') ?? 0));
+sync.start();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && L){ sync.save(L.id); sync.flush(); } });
 </script>
 </body>
 </html>

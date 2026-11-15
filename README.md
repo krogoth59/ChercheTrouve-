@@ -16,3 +16,23 @@ Ouvrir `index.html` dans un navigateur (ou via GitHub Pages).
 
 - `index.html` : le jeu complet (HTML/CSS/JS, sans dépendance).
 - `img/` : les planches en haute définition et leurs miniatures.
+
+## Progression partagée (Firebase)
+
+Tous les joueurs partagent une seule progression, mise à jour en direct. Elle est stockée dans une Firebase Realtime Database dont l'adresse se règle en haut du script de `index.html` :
+
+```js
+const FIREBASE_URL = 'https://<projet>-default-rtdb.<région>.firebasedatabase.app';
+```
+
+Règles de la base (Realtime Database → Règles) :
+
+```json
+{
+  "rules": {
+    "cherchetrouve": { ".read": true, ".write": true }
+  }
+}
+```
+
+Si `FIREBASE_URL` est vide, la progression reste dans le navigateur.
