@@ -17,7 +17,10 @@ Ouvrir `index.html` dans un navigateur (ou via GitHub Pages).
 Un menu déroulant en haut de l'écran choisit la catégorie ; la liste des niveaux ne montre que ceux de la catégorie choisie.
 
 - **Minecraft** : les 20 planches illustrées `n01`–`n10` et `t01`–`t10`.
-- **Guerre stellaire** : un univers de science-fiction original en 3 planches vectorielles (`img/s01.svg`–`s03.svg`), une par race : l'Essaim (marron, assaut d'une ville en ruines), les Exos (orange, sanctuaire dans un marais nocturne) et les Humains (bleu, base dans un canyon en flammes).
+- **Guerre stellaire** : un univers de science-fiction original en 3 planches vectorielles (`img/s01.svg`–`s03.svg`), une par faction, d'après les planches de concept du projet :
+  - **Essaim Xaroth** (violet et or) : griffeuses, traqueurs, tisseuses, vers cavernicoles, colosses bio-mécaniques, nids, dans une ville en ruines ;
+  - **Confédération Ælys** (blanc et orange) : vecteurs, lames-éther, gardiens, agresseurs, relais énergétiques, nexus d'ancrage, tours sentinelles, dans un marais nocturne ;
+  - **Combine Valnir** (blanc, bleu et noir) : Vanguard, Talon, Auriga, Vexor, Argus, Rampart, Orbita, Lyra, Ravenix, Mantis et Bastion, dans un canyon en flammes.
 
 Les planches de Guerre stellaire sont générées par `outils/gen_stellaire.js`, qui écrit les SVG et injecte la liste des objets dans `index.html` :
 
