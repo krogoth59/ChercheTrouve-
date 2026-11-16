@@ -22,6 +22,8 @@ Un menu déroulant en haut de l'écran choisit la catégorie ; la liste des nive
   - **Confédération Ælys** (blanc et orange) : vecteurs, lames-éther, gardiens, agresseurs, relais énergétiques, nexus d'ancrage, tours sentinelles, dans un marais nocturne ;
   - **Combine Valnir** (blanc, bleu et noir) : Vanguard, Talon, Auriga, Vexor, Argus, Rampart, Orbita, Lyra, Ravenix, Mantis et Bastion, dans un canyon en flammes.
 
+- **Niveaux 4 à 13** (`img/s04.jpg`–`s13.jpg`) : des mondes spatiaux de plus en plus grands, denses et difficiles (de 6 500 à 25 000 éléments, de 15 à 25 objets à trouver), où les unités deviennent de plus en plus petites : station orbitale, base lunaire, ceinture d'astéroïdes, planète de cristal, mégapole néon, lune de glace, jungle bioluminescente, forges volcaniques, anneau-monde et vaisseau-mère. Ils sont générés par `outils/gen_stellaire_avance.js` (appelé par `gen_stellaire.js`) et rendus en JPEG avec Playwright.
+
 Les unités sont celles des planches de concept (`outils/planches/`), découpées telles quelles en images transparentes dans `outils/unites/` par `outils/decoupe_unites.js` (nécessite le paquet `sharp`) :
 
 ```

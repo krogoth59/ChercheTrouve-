@@ -380,11 +380,24 @@ function build(F, id, n){
     kind: 'faction', sub: F.sub, cat: 'stellaire', img: `img/${id}.svg`, thumb: `img/${id}.svg`, vector: true};
 }
 
+// boîte à outils partagée avec outils/gen_stellaire_avance.js (niveaux 4 à 13)
+module.exports = {
+  seed: n => { R = rng32(n); }, rnd: (a, b) => rnd(a, b), ri: (a, b) => ri(a, b), pick: a => pick(a), R: () => R(), f1,
+  OUT, ol, st, op, P, C, E, Rc, L, LO, PO, T, S, ROT, G, TXT, blob, poly, shade, star, ridge, stars, fan, bolt, DEFS, boom, smoke, fireCrater,
+  U, B, UP, UDEFS, USED, NOFLIP, UMAN, icon, jawTeeth,
+  XAROTH, AELYS, VALNIR,
+  colors: {VW, VW2, VB, VB2, VK, VK2, VC, VIS, HAZ, AW, AW2, AW3, AO, AO2, AC, AG, GOLD, GOLD2, XP, XP2, XM, XG, XG2, XD, XB, XGr, XE, MAW, BONE},
+};
+
+if (require.main === module) (async () => {
 const levels = [build(XAROTH, 's01', 1), build(AELYS, 's02', 2), build(VALNIR, 's03', 3)];
+// niveaux 4 à 13 : planches denses, rendues en JPEG (outils/gen_stellaire_avance.js)
+if (!process.env.SANS_AVANCE) levels.push(...await require('./gen_stellaire_avance.js')(ROOT));
 // injection des niveaux dans index.html, entre les repères STELLAIRE-DEBUT / STELLAIRE-FIN
 const idx = path.join(ROOT, 'index.html');
 const html = fs.readFileSync(idx, 'utf8');
 const re = /(\/\/ STELLAIRE-DEBUT[^\n]*\n)[\s\S]*?(\/\/ STELLAIRE-FIN)/;
 if (!re.test(html)) throw new Error('repères STELLAIRE introuvables dans index.html');
 fs.writeFileSync(idx, html.replace(re, (m, a, b) => a + 'const STELLAIRE = ' + JSON.stringify(levels) + ';\n' + b));
-levels.forEach(l => console.log(l.id, l.name, 'objets:', l.items.length, 'bonus:', l.bats, 'éléments:', l.count, 'taille:', fs.statSync(path.join(ROOT, 'img', l.id + '.svg')).size));
+levels.forEach(l => console.log(l.id, l.name, 'objets:', l.items.length, 'bonus:', l.bats, 'éléments:', l.count, 'taille:', fs.existsSync(path.join(ROOT, l.img)) ? fs.statSync(path.join(ROOT, l.img)).size : '-'));
+})();
